@@ -101,6 +101,7 @@ export async function validateBackendEndpoints(
 ) {
   const failedEndpoints: string[] = [];
   for (const widgetId in widgets) {
+    signal?.throwIfAborted();
     const widget = widgets[widgetId];
     const initialParams = createWidgetInitParams(widget as unknown as WidgetT);
 
@@ -135,13 +136,14 @@ export async function validateBackendEndpoints(
       };
     }
 
-    const endpointRes = await fetch(endpoint, requestOptions).catch(
-      (err: Error) =>
-        new Response(JSON.stringify({ message: err.message }), {
-          status: 500,
-          statusText: err.message,
-        }),
-    );
+    const endpointRes = await fetch(endpoint, requestOptions).catch((err: Error) => {
+      // Cancellation ends the whole validation, not just this endpoint.
+      signal?.throwIfAborted();
+      return new Response(JSON.stringify({ message: err.message }), {
+        status: 500,
+        statusText: err.message,
+      });
+    });
 
     if (!endpointRes.ok) {
       if (endpointRes.status === 422 || endpointRes.status === 405) continue;

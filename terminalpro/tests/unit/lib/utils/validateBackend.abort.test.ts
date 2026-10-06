@@ -62,4 +62,21 @@ describe("backend validation cancellation", () => {
     expect(fetch).toHaveBeenCalledTimes(3);
     expect(failures).toEqual(['Widget: first - "Unavailable"']);
   });
+  it("continues after a network error while the signal is active", async () => {
+    const controller = new AbortController();
+    const fetch = vi
+      .fn()
+      .mockRejectedValueOnce(new TypeError("Failed to fetch"))
+      .mockResolvedValue(new Response("{}"));
+    vi.stubGlobal("fetch", fetch);
+    const failures = await validateBackendEndpoints(
+      widgets,
+      new URL("https://example.com"),
+      {},
+      false,
+      controller.signal,
+    );
+    expect(fetch).toHaveBeenCalledTimes(3);
+    expect(failures).toEqual(['Widget: first - "Failed to fetch"']);
+  });
 });
